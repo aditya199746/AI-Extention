@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "My Extension",
+  "version": "1.0",
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_icon": {
+      "16": "public/icons/img.jpg",
+      "48": "public/icons/img.jpg",
+      "128": "public/icons/img.jpg"
+    }
+  },
+  "background": {
+    "service_worker": "background.bundle.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.bundle.js"],
+      "run_at": "document_end"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup/index.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "permissions": ["scripting", "storage", "activeTab"],
+  "host_permissions": ["<all_urls>", "https://*/*"]
+}

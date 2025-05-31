@@ -1,47 +1,28 @@
-export const getPagePerformance = () => {
-  const timing = performance.timing;
-  const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined;
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "analyze_dom") {
+    try {
+      const { loadEventEnd, navigationStart } = performance.timing;
+      const pageLoadTime = loadEventEnd - navigationStart;
 
-  // Fallback for older browsers
-  const navTiming = navigation || timing;
+      const resourceTimings = performance.getEntriesByType("resource").map((entry) => ({
+        name: entry.name,
+        duration: entry.duration,
+      }));
 
-  return {
-    unloadEventStart: navTiming.unloadEventStart,
-    unloadEventEnd: navTiming.unloadEventEnd,
-    redirectStart: navTiming.redirectStart,
-    redirectEnd: navTiming.redirectEnd,
-    fetchStart: navTiming.fetchStart,
-    domainLookupStart: navTiming.domainLookupStart,
-    domainLookupEnd: navTiming.domainLookupEnd,
-    connectStart: navTiming.connectStart,
-    connectEnd: navTiming.connectEnd,
-    secureConnectionStart: navTiming.secureConnectionStart,
-    requestStart: navTiming.requestStart,
-    responseStart: navTiming.responseStart,
-    responseEnd: navTiming.responseEnd,
-    domLoading: timing.domLoading,
-    domInteractive: timing.domInteractive,
-    domContentLoadedEventStart: timing.domContentLoadedEventStart,
-    domContentLoadedEventEnd: timing.domContentLoadedEventEnd,
-    domComplete: timing.domComplete,
-    loadEventStart: timing.loadEventStart,
-    loadEventEnd: timing.loadEventEnd,
-    totalLoadTime: timing.loadEventEnd - timing.navigationStart,
-    resourcesLoaded: performance.getEntriesByType("resource").length,
-  };
-};
+      // Extract DOM from the active webpage (not the popup iframe)
+      const domSnapshot = document.documentElement.innerHTML.slice(0, 3000);
 
-// ...existing code...
-
-chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === "GET_BLOG_CONTENT") {
-    const article = document.querySelector("article");
-    const extractedText = article ? article.innerText : document.body.innerText;
-    sendResponse({ content: extractedText });
+      sendResponse({
+        pageLoadTime: `${pageLoadTime}ms`,
+        networkRequests: resourceTimings,
+        domElementsCount: document.getElementsByTagName("*").length,
+        domSnapshot, // Include the extracted DOM snapshot
+      });
+    } catch (error) {
+      console.error("Error processing DOM analysis:", error);
+      sendResponse({ error: "⚠ Error analyzing the DOM performance." });
+    }
+    
+    return true; // Required for async response handling
   }
-  if (msg.type === "GET_PAGE_PERFORMANCE") {
-    sendResponse({ metrics: getPagePerformance() });
-  }
-  // Return true to indicate async response
-  return true;
 });

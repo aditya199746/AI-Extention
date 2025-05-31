@@ -41,17 +41,26 @@ Provide a detailed report with recommendations.`;
  */
 export const analyzeWithGemini = async (prompt: string) => {
   try {
-    const response = await axios.post(
-      "https://api.vertexai.googleapis.com/v1/models/gemini:predict",
-      {
-        instances: [{ prompt }],
-        parameters: { temperature: 0.6 }
+    const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
       },
-      {
-        headers: { Authorization: `Bearer ${GEMINI_API_KEY}` }
-      }
-    );
-    return response.data.predictions[0].content;
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ]
+      })
+    }
+  );
+    const data = await response.json();
+    return data?.candidates?.[0]?.content?.parts?.[0]?.text;
   } catch (error) {
     console.error("Gemini AI Error:", error);
     return "⚠ AI Analysis Failed.";
@@ -71,7 +80,15 @@ export const analyzePerformance = async (performanceLogs: string) =>
   );
 
 // Optimize DOM – using refined prompt to suggest improvements in DOM structure.
-export const optimizeDOM = async (domSnapshot: string) =>
+export const optimizeDOM = async (domSnapshot: string, pageMetrics: object) =>
   analyzeWithGemini(
-    `Analyze the following DOM snippet to identify inefficiencies and suggest improvements for better rendering performance and maintainability:\n\n${domSnapshot}`
+    `Analyze the following website performance metrics and DOM snapshot for optimization issues:
+  
+  DOM Structure:
+  ${domSnapshot}
+
+  Page Performance:
+  ${JSON.stringify(pageMetrics)}
+
+  Suggest improvements for better rendering and faster interactions.`
   );

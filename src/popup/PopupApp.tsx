@@ -11,10 +11,34 @@ const NewsSummary = lazy(() => import("./src/NewsSummary"));
 const PopupApp = () => {
   const [activeTab, setActiveTab] = useState<"blog" | "video" | "news" | "code_review" | "performance"| "dom" | "security">("blog");
 
+   const handleClose = () => {
+    // Send a message to the parent window (content script)
+    window.parent.postMessage({ type: "CLOSE_AI_PANEL" }, "*");
+  };
+  
   return (
     <div style={{ padding: "20px" }}>
+      <button
+        onClick={handleClose}
+        style={{
+          position: "absolute",
+          top: 16,
+          right: 16,
+          background: "#eee",
+          border: "none",
+          borderRadius: "50%",
+          width: 32,
+          height: 32,
+          fontSize: 18,
+          cursor: "pointer",
+          zIndex: 1001,
+        }}
+        aria-label="Close"
+      >
+        ×
+      </button>
       <h2>📌 AI Summary Extension</h2>
-      <div style={{ display: "flex", gap: "10px" }}>
+      <div style={{ display: "flex", gap: "10px", position: "relative" }}>
         <button onClick={() => setActiveTab("blog")}>📜 Blog</button>
         <button onClick={() => setActiveTab("video")}>🎥 Video</button>
         <button onClick={() => setActiveTab("news")}>📰 News</button>

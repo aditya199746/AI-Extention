@@ -7,6 +7,7 @@ const MARGIN = 20;
 const FloatingButton = () => {
   const [position, setPosition] = useState({ top: window.innerHeight - BUTTON_SIZE - MARGIN, left: window.innerWidth - BUTTON_SIZE - MARGIN });
   const [dragging, setDragging] = useState(false);
+  const [isPopupVisible, setPopupVisible] = useState(false);
   const offset = useRef({ x: 0, y: 0 });
 
   // Handle mouse down
@@ -76,12 +77,18 @@ const FloatingButton = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Popup logic (unchanged)
-  const [isPopupVisible, setPopupVisible] = useState(false);
-
   const togglePopup = () => {
     setPopupVisible(!isPopupVisible);
   };
+
+  window.addEventListener("message", (event) => {
+  if (event.data?.type === "CLOSE_AI_PANEL") {
+    const iframe = document.getElementById("ai-popup");
+    if (iframe) {
+      setPopupVisible(false)
+    }
+  }
+});
 
   return (
     <>
@@ -102,6 +109,8 @@ const FloatingButton = () => {
           cursor: dragging ? "grabbing" : "grab",
           zIndex: 9999,
           userSelect: "none",
+          animation: "heartbeat 1.2s infinite",
+          boxShadow: "0 0 0 0 rgba(0,120,212,0.7)",
         }}
         onMouseDown={handleMouseDown}
         onClick={togglePopup}
@@ -110,21 +119,24 @@ const FloatingButton = () => {
       </div>
       {isPopupVisible && (
         <iframe
-          src={chrome.runtime.getURL("popup/index.html")}
-          style={{
-            position: "fixed",
-            width: "400px",
-            height: "300px",
-            border: "1px solid #ccc",
-            left: "50%",
-            top: "50%",
-            zIndex: 9999,
-            backgroundColor: "white",
-            boxShadow: "0px 4px 10px rgba(0,0,0,0.2)",
-            borderRadius: "5px",
-          }}
-          id = "ai-popup"
-        />
+        src={chrome.runtime.getURL("popup/index.html")}
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          width: "400px",
+          height: "100vh",
+          border: "none",
+          backgroundColor: "white",
+          boxShadow: "-4px 0 16px rgba(0,0,0,0.2)",
+          borderRadius: "0",
+          zIndex: 9999,
+          transition: "transform 0.3s cubic-bezier(.4,0,.2,1)",
+          transform: isPopupVisible ? "translateX(0)" : "translateX(100%)",
+          overflow: "hidden",
+        }}
+        id="ai-popup"
+      />
       )}
     </>
   );
@@ -148,4 +160,30 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   // Return true to indicate async response
   return true;
+});
+
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "analyze_dom") {
+    try {
+      const { loadEventEnd, navigationStart } = performance.timing;
+      const pageLoadTime = loadEventEnd - navigationStart;
+
+      const resourceTimings = performance.getEntriesByType("resource").map((entry) => ({
+        name: entry.name,
+        duration: entry.duration,
+      }));
+
+      // Send the response asynchronously
+      sendResponse({
+        pageLoadTime: `${pageLoadTime}ms`,
+        networkRequests: resourceTimings,
+        domElementsCount: document.getElementsByTagName("*").length,
+      });
+    } catch (error) {
+      console.error("Error processing DOM analysis:", error);
+      sendResponse({ error: "⚠ Error analyzing the DOM performance." });
+    }
+    
+    return true; // Explicitly indicate an asynchronous response
+  }
 });
